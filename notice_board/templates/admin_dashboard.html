@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<h1>Admin Dashboard</h1>
+<p>Welcome, {{ user.username }}! Manage school notices here.</p>
+
+<div class="row mb-4">
+  <div class="col">
+    <a href="{% url 'notices:home' %}" class="btn btn-outline-primary">View Public Notices</a>
+  </div>
+  <div class="col text-end">
+    <a href="{% url 'notices:create' %}" class="btn btn-success">+ New Notice</a>
+    <a href="{% url 'notices:logout' %}" class="btn btn-secondary">Logout</a>
+  </div>
+</div>
+
+<div class="recent-notices">
+  <h3>Recent Active Notices (10)</h3>
+  {% if notices %}
+    {% for notice in notices %}
+    <div class="card mb-2 {% if notice.priority == 'high' %}border-warning{% endif %}">
+      <div class="card-body d-flex justify-content-between align-items-center">
+        <div>
+          <h6 class="mb-1">{{ notice.title }}</h6>
+          <small class="text-muted">
+            {{ notice.get_category_display }} • {{ notice.get_priority_display }} • {{ notice.created_at|date:"M d, Y" }}
+            {% if notice.publish_date %} • Publish: {{ notice.publish_date|date:"M d, Y H:i" }}{% endif %}
+            {% if notice.expiry_date %} • Expires: {{ notice.expiry_date|date:"M d, Y H:i" }}{% endif %}
+          </small>
+        </div>
+        <div>
+          <a href="{% url 'notices:update' notice.pk %}" class="btn btn-sm btn-outline-primary">Edit</a>
+          <a href="{% url 'notices:delete' notice.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p>No active notices. <a href="{% url 'notices:create' %}">Create one</a>.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Login{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6 col-lg-4">
+    <div class="card">
+      <div class="card-body">
+        <h3 class="card-title text-center mb-4">Admin Login</h3>
+        {% if form.errors %}
+          <div class="alert alert-danger">
+            Invalid username or password.
+          </div>
+        {% endif %}
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert alert-success">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+        <form method="post">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label">Username</label>
+            <input type="text" class="form-control" name="username" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Password</label>
+            <input type="password" class="form-control" name="password" required>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Login</button>
+        </form>
+        <div class="text-center mt-3">
+          <small>First time? Create account at <a href="/admin/create-superuser-instructions">Django Admin</a></small>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

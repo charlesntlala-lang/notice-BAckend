@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+
+{% block title %}School Notice Board{% endblock %}
+
+{% block content %}
+<h1>School Notice Board</h1>
+<p class="lead">Digital platform for school announcements accessible anytime, anywhere.</p>
+
+<!-- Filter Form -->
+<form method="get" class="mb-4">
+  <div class="row g-3">
+    <div class="col-md-2">
+      <select name="category" class="form-select">
+        <option value="">All Categories</option>
+        {% for value, label in categories %}
+          <option value="{{ value }}" {% if selected_category == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <select name="priority" class="form-select">
+        <option value="">All Priorities</option>
+        {% for value, label in priorities %}
+          <option value="{{ value }}" {% if selected_priority == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <input type="date" name="from_date" class="form-control" value="{{ from_date }}">
+    </div>
+    <div class="col-md-2">
+      <input type="date" name="to_date" class="form-control" value="{{ to_date }}">
+    </div>
+    <div class="col-md-2">
+      <select name="sort" class="form-select">
+        <option value="-created_at" {% if sort == '-created_at' %}selected{% endif %}>Newest First</option>
+        <option value="created_at" {% if sort == 'created_at' %}selected{% endif %}>Oldest First</option>
+        <option value="-priority" {% if sort == '-priority' %}selected{% endif %}>High Priority</option>
+      </select>
+    </div>
+
+    {% if is_admin %}
+    <div class="col-md-2">
+      <select name="view_mode" class="form-select">
+        <option value="active" {% if view_mode == 'active' %}selected{% endif %}>Active Notices</option>
+        <option value="upcoming" {% if view_mode == 'upcoming' %}selected{% endif %}>Upcoming</option>
+        <option value="all" {% if view_mode == 'all' %}selected{% endif %}>All Notices</option>
+      </select>
+    </div>
+    {% endif %}
+  </div>
+
+  </div>
+
+    {% if user.is_authenticated %}
+    <div class="col-12">
+      <a href="{% url 'notices:create' %}" class="btn btn-success">+ Add Notice</a>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="row">
+    <div class="col-md-12">
+      <button type="submit" class="btn btn-primary me-2">Apply Filters</button>
+      <a href="{% url 'notices:home' %}" class="btn btn-secondary">Clear Filters</a>
+    </div>
+  </div>
+
+</form id="filterForm">
+
+
+<!-- Notices List -->
+<div class="notices-list">
+
+  {% if notices %}
+    {% for notice in notices %}
+    <div class="card mb-3 {% if note.priority == 'high' %}border-warning border-3{% endif %}">
+      <div class="card-header d-flex justify-content-between align-items-start">
+        <div>
+          <span class="badge category-{{ notice.category }} me-2">{{ notice.get_category_display }}</span>
+          <span class="badge priority-{{ notice.priority }}">{{ notice.get_priority_display }}</span>
+        </div>
+        <small class="text-muted">{{ notice.created_at|date:"M d, Y H:i" }}</small>
+      </div>
+      <div class="card-body">
+        <h5 class="card-title">{{ notice.title }}</h5>
+        <p class="card-text" id="content-{{ notice.pk }}">
+          {% if note.content|length > 200 %}
+            {{ notice.content|truncatechars:200 }} <a href="#" onclick="toggleContent({{ notice.pk }})" class="text-primary">...read more</a>
+            <div style="display:none;">{{ notice.content|linebreaks }}</div>
+          {% else %}
+            {{ notice.content|linebreaks }}
+          {% endif %}
+        </p>
+        {% if user.is_authenticated %}
+        <div class="btn-group">
+          <a href="{% url 'notices:update' notice.pk %}" class="btn btn-sm btn-outline-primary">Edit</a>
+          <a href="{% url 'notices:delete' notice.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+
+    <!-- Pagination -->
+    {% if notices.has_other_pages %}
+    <nav>
+      <ul class="pagination justify-content-center">
+        {% if notices.has_previous %}
+          <li class="page-item"><a class="page-link" href="?page={{ notices.previous_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}">Previous</a></li>
+        {% endif %}
+        {% for num in notices.paginator.page_range %}
+          {% if notices.number == num %}
+            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+          {% else %}
+            <li class="page-item"><a class="page-link" href="?page={{ num }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}">{{ num }}</a></li>
+          {% endif %}
+        {% endfor %}
+        {% if notices.has_next %}
+          <li class="page-item"><a class="page-link" href="?page={{ notices.next_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}">Next</a></li>
+        {% endif %}
+      </ul>
+    </nav>
+    {% endif %}
+  {% else %}
+    <div class="alert alert-info">
+      No notices match your filters. {% if user.is_authenticated %}<a href="{% url 'notices:create' %}">Create the first one!</a>{% else %}Contact admin.{% endif %}
+    </div>
+  {% endif %}
+</div>
+
+<script>
+function toggleContent(pk) {
+  const content = document.getElementById('content-' + pk);
+  const link = content.querySelector('a');
+  if (link.textContent.includes('read more')) {
+    link.textContent = 'read less';
+    link.nextElementSibling.style.display = 'block';
+  } else {
+    link.textContent = '...read more';
+    link.nextElementSibling.style.display = 'none';
+  }
+}
+
+// Auto-filter on change (debounced to avoid too many requests)
+let timeout;
+document.getElementById('filterForm').addEventListener('change', function(e) {
+  clearTimeout(timeout);
+  timeout = setTimeout(() => {
+    this.submit();
+  }, 500);
+});
+document.querySelectorAll('#filterForm input[type="date"]').forEach(input => {
+  input.addEventListener('change', function() {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => {
+      document.getElementById('filterForm').submit();
+    }, 500);
+  });
+});
+</script>
+
+{% endblock %}
